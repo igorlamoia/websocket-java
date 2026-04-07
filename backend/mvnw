@@ -1,0 +1,41 @@
+#!/bin/sh
+set -eu
+
+BASE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+WRAPPER_PROPERTIES="$BASE_DIR/.mvn/wrapper/maven-wrapper.properties"
+
+if command -v mvn >/dev/null 2>&1; then
+  exec mvn "$@"
+fi
+
+if [ ! -f "$WRAPPER_PROPERTIES" ]; then
+  echo "Missing $WRAPPER_PROPERTIES" >&2
+  exit 1
+fi
+
+DISTRIBUTION_URL=$(grep '^distributionUrl=' "$WRAPPER_PROPERTIES" | cut -d= -f2-)
+if [ -z "$DISTRIBUTION_URL" ]; then
+  echo "distributionUrl not found in $WRAPPER_PROPERTIES" >&2
+  exit 1
+fi
+
+ARCHIVE_NAME=$(basename "$DISTRIBUTION_URL")
+INSTALL_ROOT="$BASE_DIR/.mvn/wrapper/dist"
+ARCHIVE_PATH="$INSTALL_ROOT/$ARCHIVE_NAME"
+MAVEN_DIR="$INSTALL_ROOT/$(printf '%s' "$ARCHIVE_NAME" | sed 's/-bin\.tar\.gz$//')"
+MVN_BIN="$MAVEN_DIR/bin/mvn"
+
+mkdir -p "$INSTALL_ROOT"
+
+if [ ! -x "$MVN_BIN" ]; then
+  if [ ! -f "$ARCHIVE_PATH" ]; then
+    if ! command -v curl >/dev/null 2>&1; then
+      echo "curl is required to download Maven" >&2
+      exit 1
+    fi
+    curl -fsSL "$DISTRIBUTION_URL" -o "$ARCHIVE_PATH"
+  fi
+  tar -xzf "$ARCHIVE_PATH" -C "$INSTALL_ROOT"
+fi
+
+exec "$MVN_BIN" "$@"

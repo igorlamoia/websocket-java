@@ -1,0 +1,17 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    working_dir: /workspace/backend
+    command: ["./dev-entrypoint.sh"]
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/workspace/backend
+      - maven-cache:/root/.m2
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+
+volumes:
+  maven-cache:
