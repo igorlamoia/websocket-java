@@ -13,7 +13,7 @@ import {
   YAxis,
 } from "recharts";
 
-import { getApiBaseUrl, getSockJsUrl } from "../lib/backend";
+import { api, getSockJsUrl } from "../lib/backend";
 
 type PresenceSnapshot = {
   connectedUsers: number;
@@ -39,70 +39,74 @@ function formatLabel(timestamp: string | null) {
   }).format(new Date(timestamp));
 }
 
+function pushSnapshot(
+  snapshot: PresenceSnapshot,
+  setCurrentCount: (value: number) => void,
+  setHistory: React.Dispatch<React.SetStateAction<ChartPoint[]>>,
+  isActive: boolean,
+) {
+  if (!isActive) {
+    return;
+  }
+
+  startTransition(() => {
+    setCurrentCount(snapshot.connectedUsers);
+    setHistory((previous) => {
+      const nextPoint = {
+        count: snapshot.connectedUsers,
+        label: formatLabel(snapshot.updatedAt),
+      };
+      return [...previous, nextPoint].slice(-MAX_POINTS);
+    });
+  });
+}
+
 export function PresenceDashboard() {
   const [currentCount, setCurrentCount] = useState(0);
   const [history, setHistory] = useState<ChartPoint[]>([]);
   const [status, setStatus] = useState("conectando");
   const statusTone = status === "ao vivo" ? "live" : "idle";
 
+  async function loadPresenceSnapshot(
+    isActive: boolean,
+    pushSnapshot: (snapshot: PresenceSnapshot) => void,
+    setStatus: (status: string) => void,
+  ) {
+    try {
+      const response = await api.get<PresenceSnapshot>("/api/presence");
+      if (isActive) pushSnapshot(response.data);
+    } catch {
+      if (isActive) setStatus("backend indisponível");
+    }
+  }
+
   useEffect(() => {
     let isActive = true;
 
-    const pushSnapshot = (snapshot: PresenceSnapshot) => {
-      if (!isActive) {
-        return;
-      }
-
-      startTransition(() => {
-        setCurrentCount(snapshot.connectedUsers);
-        setHistory((previous) => {
-          const nextPoint = {
-            count: snapshot.connectedUsers,
-            label: formatLabel(snapshot.updatedAt),
-          };
-          return [...previous, nextPoint].slice(-MAX_POINTS);
-        });
-      });
-    };
-
-    fetch(`${getApiBaseUrl()}/api/presence`)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json() as Promise<PresenceSnapshot>;
-      })
-      .then((snapshot) => {
-        pushSnapshot(snapshot);
-      })
-      .catch(() => {
-        if (isActive) {
-          setStatus("backend indisponível");
-        }
-      });
+    void loadPresenceSnapshot(
+      isActive,
+      (snapshot) =>
+        pushSnapshot(snapshot, setCurrentCount, setHistory, isActive),
+      setStatus,
+    );
 
     const client = new Client({
       reconnectDelay: 1500,
       webSocketFactory: () => new SockJS(getSockJsUrl()),
       onConnect: () => {
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
         setStatus("ao vivo");
         client.subscribe("/topic/presence", (frame) => {
-          pushSnapshot(JSON.parse(frame.body) as PresenceSnapshot);
+          const snapshotObject: PresenceSnapshot = JSON.parse(frame.body);
+          pushSnapshot(snapshotObject, setCurrentCount, setHistory, isActive);
         });
       },
       onStompError: () => {
-        if (isActive) {
-          setStatus("erro no broker");
-        }
+        if (isActive) setStatus("erro no broker");
       },
       onWebSocketClose: () => {
-        if (isActive) {
-          setStatus("reconectando");
-        }
+        if (isActive) setStatus("reconectando");
       },
     });
 
