@@ -1,4 +1,4 @@
-package com.lamoia.websocketjava.presence;
+package com.milena.websocketjava.presence;
 
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;

@@ -1,4 +1,4 @@
-package com.lamoia.websocketjava;
+package com.milena.websocketjava;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

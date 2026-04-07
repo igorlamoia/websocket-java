@@ -1,4 +1,4 @@
-package com.lamoia.websocketjava.presence;
+package com.milena.websocketjava.presence;
 
 import java.time.Instant;
 
