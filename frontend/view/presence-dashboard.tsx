@@ -53,7 +53,7 @@ export function PresenceDashboard() {
           </Typography>
         </div>
 
-        <div className="relative flex flex-col justify-end gap-3.5 overflow-hidden rounded-[28px] border border-[rgba(22,33,29,0.12)] bg-[linear-gradient(180deg,rgba(196,255,72,0.14),transparent_38%),linear-gradient(135deg,#16211d_0%,#202a26_100%)] p-8 text-[#f8f4ea] shadow-[0_24px_60px_rgba(31,36,27,0.12)] backdrop-blur-sm max-sm:rounded-[22px] max-sm:p-5">
+        <div className="relative flex flex-col justify-end gap-3.5 overflow-hidden rounded-[28px] border border-[rgba(22,33,29,0.12)] bg-[linear-gradient(180deg,rgba(196,255,72,0.14),transparent_38%),linear-gradient(135deg,#16211d_0%,#202a26_100%)] p-8 text-chart-tooltip-text shadow-[0_24px_60px_rgba(31,36,27,0.12)] backdrop-blur-sm max-sm:rounded-[22px] max-sm:p-5">
           <Typography as="span" variant="metricLabel">
             Clientes conectados
           </Typography>
