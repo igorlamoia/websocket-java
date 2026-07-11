@@ -40,15 +40,20 @@ function pushSnapshot(
 }
 
 async function loadPresenceSnapshot(
-  isActive: boolean,
+  shouldApply: () => boolean,
   pushSnapshot: (snapshot: PresenceSnapshot) => void,
   setStatus: (status: string) => void,
 ) {
   try {
     const response = await api.get<PresenceSnapshot>("/api/presence");
-    if (isActive) pushSnapshot(response.data);
+
+    if (shouldApply()) {
+      pushSnapshot(response.data);
+    }
   } catch {
-    if (isActive) setStatus("backend indisponível");
+    if (shouldApply()) {
+      setStatus("backend indisponível");
+    }
   }
 }
 
@@ -59,13 +64,7 @@ export function useSocketClient() {
 
   useEffect(() => {
     let isActive = true;
-
-    void loadPresenceSnapshot(
-      isActive,
-      (snapshot) =>
-        pushSnapshot(snapshot, setCurrentCount, setHistory, isActive),
-      setStatus,
-    );
+    let realtimeUpdateVersion = 0;
 
     const client = new Client({
       reconnectDelay: 1500,
@@ -74,10 +73,35 @@ export function useSocketClient() {
         if (!isActive) return;
 
         setStatus("ao vivo");
+
         client.subscribe("/topic/presence", (frame) => {
+          realtimeUpdateVersion += 1;
+
           const snapshotObject: PresenceSnapshot = JSON.parse(frame.body);
-          pushSnapshot(snapshotObject, setCurrentCount, setHistory, isActive);
+
+          pushSnapshot(
+            snapshotObject,
+            setCurrentCount,
+            setHistory,
+            isActive,
+          );
         });
+
+        const versionBeforeSnapshot = realtimeUpdateVersion;
+
+        void loadPresenceSnapshot(
+          () =>
+            isActive &&
+            realtimeUpdateVersion === versionBeforeSnapshot,
+          (snapshot) =>
+            pushSnapshot(
+              snapshot,
+              setCurrentCount,
+              setHistory,
+              isActive,
+            ),
+          setStatus,
+        );
       },
       onStompError: () => {
         if (isActive) setStatus("erro no broker");
